@@ -97,15 +97,11 @@ class SQLObject
   def initialize(params = {})
     # ...
     params.each do |key,value|
-
       key= key.to_s
-
       raise "unknown attribute '#{key}'" unless self.class.columns.include?(key.to_sym)
 
       self.send("#{key}=",value)
-
     end
-
   end
 
   def attributes
@@ -115,14 +111,47 @@ class SQLObject
 
   def attribute_values
     # ...
+    self.class.columns.map do |column|
+      self.send("#{column}")
+    end
   end
 
   def insert
     # ...
+
+    columns = self.class.columns.drop(1)
+    col_names = columns.map(&:to_s).join(", ")
+    question_marks = (["?"] * columns.count).join(", ")
+    # debugger
+    DBConnection.execute(<<-SQL, *attribute_values.drop(1))
+      INSERT INTO
+        #{self.class.table_name} (#{col_names})
+      VALUES
+        (#{question_marks})
+
+    SQL
+    self.id = DBConnection.last_insert_row_id
+
   end
 
   def update
     # ...
+
+    columns = self.class.columns.drop(1)
+    col_names = columns.map(&:to_s).join(", ")
+    debugger
+    question_marks = (["?"] * columns.count).join(", ")
+    # debugger
+    DBConnection.execute(<<-SQL, *attribute_values.drop(1))
+      UPDATE
+        #{self.class.table_name} (#{col_names})
+      SET
+        (#{question_marks})
+      WHERE
+        id = ?
+
+    SQL
+    self.id = DBConnection.last_insert_row_id
   end
 
   def save
